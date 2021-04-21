@@ -10,7 +10,7 @@ struct Stack<T> {
 
 impl<T> Stack<T> {
     /// Constructs a new empty stack
-    fn new() -> Self {
+    pub fn new() -> Self {
         Stack {
             top: None,
             size: 0
@@ -18,7 +18,7 @@ impl<T> Stack<T> {
     }
 
     /// checks to see if the stack is empty or not
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         match self.top {
             Some(_) => false,
             None => {
@@ -29,7 +29,7 @@ impl<T> Stack<T> {
     }
 
     /// Add items to the top of the stack
-    fn push(&mut self, item: T) {
+    pub fn push(&mut self, item: T) {
         let prev_top = self.top.take();
         self.top = Some(Box::new(Node { data: item, next: prev_top}));
         self.size += 1;
@@ -37,7 +37,7 @@ impl<T> Stack<T> {
 
     /// Remove items from the top of the stack
     /// Returns None if the stack is empty
-    fn pop(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         let ret = self.top.take();
         if let Some(node) = ret {
             self.top = node.next;
@@ -49,13 +49,13 @@ impl<T> Stack<T> {
     }
 
     /// returns number of items in the stack
-    fn depth(&self) -> usize {
+    pub fn depth(&self) -> usize {
         self.size
     }
 
     /// returns a reference to the top item without removing it
     /// returns None if the stack is empty
-    fn peek(&self) -> Option<&T> {
+    pub fn peek(&self) -> Option<&T> {
         match &self.top {
             Some(node) => Some(&node.data),
             None => None
