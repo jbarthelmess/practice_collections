@@ -171,14 +171,15 @@ mod tests {
         let mut stack = init();
         stack.push(5);
         let size = stack.depth();
-        let mut reference = 0;
-        if let Some(val) = stack.peek() {
-            assert_eq!(*val, 5);
-            assert_eq!(stack.depth(), size);
-            reference = *val;
-        } else {
-            panic!("should've had something to peek")
-        }
+        let reference = {
+            if let Some(val) = stack.peek() {
+                assert_eq!(5, *val);
+                assert_eq!(size, stack.depth());
+                *val
+            } else {
+                -1
+            }
+        };
         if let Some(returned) = stack.pop() {
             assert_eq!(returned, reference);
         }
