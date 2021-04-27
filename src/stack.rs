@@ -3,7 +3,7 @@ struct Node<T> {
     pub next: Option<Box<Node<T>>>
 }
 
-struct Stack<T> {
+pub struct Stack<T> {
     top: Option<Box<Node<T>>>,
     size: usize
 }

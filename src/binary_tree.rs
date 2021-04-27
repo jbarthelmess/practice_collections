@@ -19,28 +19,81 @@ impl<T: PartialEq + PartialOrd + fmt::Display> Node<T> {
 
     fn print(&self, indent: &str) {
         println!("{}Node : {}, {}", indent, self.data, self.balance);
-        if let Some(child) = &self.left { child.print(&format!("{}    ", indent)); }
-        if let Some(child) = &self.right {child.print(&format!("{}    ", indent)); }
+        if let Some(child) = &self.left { 
+            println!("{}Left: ", indent);
+            child.print(&format!("{}    ", indent)); 
+        }
+        if let Some(child) = &self.right {
+            println!("{}Right: ", indent);
+            child.print(&format!("{}    ", indent)); 
+        }
+    }
+}
+
+struct TreeIterator<'a, T:'a+Clone+PartialOrd+PartialEq+fmt::Display> {
+    tree: &'a BinaryTree<T>,
+    stack: crate::stack::Stack<&'a Box<Node<T>>>
+}
+
+impl<'a, T:Clone+PartialOrd+PartialEq+fmt::Display+'a> TreeIterator<'a, T> {
+    fn new(tree: &'a BinaryTree<T>) -> Self {
+        let mut stack = crate::stack::Stack::new();
+        let mut begin = tree.head.as_ref();
+        while let Some(left) = begin {
+            stack.push(left);
+            begin = left.left.as_ref();
+        }
+        TreeIterator {tree, stack}
+    }
+}
+
+impl<'a, T:Clone+PartialOrd+PartialEq+fmt::Display+'a> Iterator for TreeIterator<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let release = self.stack.pop();
+        if let Some(node) = release {
+            let mut begin = &node.right;
+            while let Some(child) = begin {
+                self.stack.push(child);
+                begin = &child.left;
+            }
+            Some(&node.data)
+        } else {
+           None 
+        }
     }
 }
 
 fn rotate_right<T>(mut root: Box<Node<T>>) -> Box<Node<T>> {
+    assert!(root.balance < 0);
     let old_root_balance = root.balance;
     let mut new_root = root.left.unwrap();
+    let new_root_balance = new_root.balance;
     root.left = new_root.right;
-    root.balance = 0;
+    root.balance = old_root_balance +1 - new_root_balance;
     new_root.right = Some(root);
-    new_root.balance = old_root_balance +2;
+    if old_root_balance == -1 && new_root_balance == 0 {
+        new_root.balance = old_root_balance +2;
+    } else {
+        new_root.balance = old_root_balance +3 + new_root_balance;
+    }
     new_root
 }
 
 fn rotate_left<T>(mut root: Box<Node<T>>) -> Box<Node<T>> {
+    assert!(root.balance > 0);
     let old_root_balance = root.balance;
     let mut new_root = root.right.unwrap();
+    let new_root_balance = new_root.balance;
     root.right = new_root.left;
-    root.balance = 0;
+    root.balance = old_root_balance -1 - new_root_balance;
     new_root.left = Some(root);
-    new_root.balance = old_root_balance -2;
+    if old_root_balance == 1 && new_root_balance == 0 {
+        new_root.balance = old_root_balance -2;
+    } else {
+        new_root.balance = old_root_balance -3 + new_root_balance;
+    }
+    
     new_root
 }
 
@@ -118,7 +171,7 @@ fn add_helper<T: PartialEq + PartialOrd + fmt::Display>(mut parent: Box<Node<T>>
     }
 }
 
-fn search<T: PartialEq + PartialOrd + fmt::Display>(node: &Box<Node<T>>, needle: &T) -> bool {
+fn search<T: PartialEq + PartialOrd>(node: &Box<Node<T>>, needle: &T) -> bool {
     if node.data == *needle {
         true
     } else if node.data > *needle {
@@ -136,7 +189,7 @@ fn search<T: PartialEq + PartialOrd + fmt::Display>(node: &Box<Node<T>>, needle:
     }
 }
 
-fn find_least<T: PartialEq + PartialOrd + fmt::Display + Clone>(root: &Box<Node<T>>) -> T {
+fn find_least<T: Clone>(root: &Box<Node<T>>) -> T {
     let mut left = root;
     while let Some(val) = left.left.as_ref() {
         left = val;
@@ -144,7 +197,7 @@ fn find_least<T: PartialEq + PartialOrd + fmt::Display + Clone>(root: &Box<Node<
     left.data.clone()
 }
 
-fn find_greatest<T: PartialEq + PartialOrd + fmt::Display + Clone >(root: &Box<Node<T>>) -> T {
+fn find_greatest<T: Clone>(root: &Box<Node<T>>) -> T {
     let mut right = root;
     while let Some(val) = right.right.as_ref() {
         right = val;
@@ -152,7 +205,7 @@ fn find_greatest<T: PartialEq + PartialOrd + fmt::Display + Clone >(root: &Box<N
     right.data.clone()
 }
 
-fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone >(mut parent: Box<Node<T>>, data: &T) -> (Option<Box<Node<T>>>, i8) {
+fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone>(mut parent: Box<Node<T>>, data: &T) -> (Option<Box<Node<T>>>, i8) {
     if parent.data == *data { // we found the item to be removed
         match (parent.left.take(), parent.right.take()) { // we need to figure out what the successor should be, there are four cases
             (None, None) => (None, 1),
@@ -185,11 +238,18 @@ fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone >(mut parent: 
             parent.balance -= height_change;
             if height_change == 0 {
                 (Some(parent), 0)
-            }else {
+            } else {
                 match parent.balance {
                     -2 => { // need to rotate right
+                        let left = parent.left.take().unwrap();
+                        let left_balance = left.balance;
+                        parent.left = Some(left);
                         parent = perform_rotation(parent);
-                        (Some(parent), 1)
+                        if left_balance == 0 {
+                            (Some(parent), 0)
+                        } else {
+                            (Some(parent), 1)
+                        }
                     },
                     -1 => {
                         if let Some(_) = parent.left {
@@ -202,7 +262,6 @@ fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone >(mut parent: 
                     _ => unreachable!()
                 }
             }
-            
         } else { // no values match, return no height change
             (Some(parent), 0)
         }
@@ -216,8 +275,15 @@ fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone >(mut parent: 
             } else {
                 match parent.balance {
                     2 => { // need to rotate left
+                        let right = parent.right.take().unwrap();
+                        let right_balance = right.balance;
+                        parent.right = Some(right);
                         parent = perform_rotation(parent);
-                        (Some(parent), 1)
+                        if right_balance == 0 {
+                            (Some(parent), 0)
+                        } else {
+                            (Some(parent), 1)
+                        }
                     },
                     1 => {
                         if let Some(_) = parent.right {
@@ -230,7 +296,6 @@ fn remove_helper<T: PartialEq + PartialOrd + fmt::Display + Clone >(mut parent: 
                     _ => unreachable!()
                 }
             }
-            
         } else { // no values match, return no height change
             (Some(parent), 0)
         }
@@ -267,6 +332,10 @@ impl<T: PartialEq + PartialOrd + fmt::Display + Clone> BinaryTree<T> {
         } else {
             false
         }
+    }
+
+    pub fn iter(&self) -> TreeIterator<T> {
+        TreeIterator::new(self)
     }
 
     pub fn print(&self) {
@@ -316,11 +385,26 @@ mod tests {
         tree.remove(22);
         tree.remove(17);
         tree.remove(19);
-        println!("After removal...\n");
-        tree.print();
         tree.remove(18);
+        tree.remove(20);
+        tree.remove(23);
+        tree.remove(25);
+        tree.remove(27);
 
         println!("After requisite rotations...\n");
         tree.print();
+    }
+
+    #[test]
+    fn iterator() {
+        let mut tree = BinaryTree::<i32>::new();
+        let items = vec![9,4,5,2,6,1,8];
+        for i in items {
+            tree.add(i);
+        }
+
+        for i in tree.iter() {
+            println!("{}", i);
+        }
     }
 }
