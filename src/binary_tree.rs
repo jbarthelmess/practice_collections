@@ -224,4 +224,31 @@ mod tests {
         tree.insert((8, "should cause 6 to bump up to root node"));
         print_tree(&tree.root, 0);
     }
+
+    #[test]
+    fn add_test_4() {
+        let mut tree = BTree::new(5);
+        tree.insert((1, "First item"));
+        tree.insert((2, "Second item"));
+        tree.insert((3, "This item should end up in the root"));
+        tree.insert((4, "First item, in right child"));
+        tree.insert((5, "Second item, in right child"));
+        assert!(!tree.root.is_none());
+
+        // add more nodes
+        tree.insert((6, "should be added to right child, and eventually end up in root"));
+        tree.insert((0, "should be added to left child"));
+        tree.insert((7, "this will fill right"));
+        tree.insert((8, "should cause 6 to bump up to root node"));
+        tree.insert((-1, "goes into left child"));
+        tree.insert((-2, "should bump zero up to the root"));
+        tree.insert((9, "will eventually end up in root"));
+        tree.insert((10, "right child"));
+        tree.insert((11, "should bump 9 up to the root"));
+        tree.insert((12, "right child"));
+        tree.insert((13, "right child again"));
+        tree.insert((14, "should create a third tier of the tree"));
+        
+        print_tree(&tree.root, 0);
+    }
 }
